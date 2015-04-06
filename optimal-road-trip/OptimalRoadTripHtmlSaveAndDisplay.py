@@ -115,7 +115,8 @@ def CreateOptimalRouteHtmlFile(optimal_route, distance, display=1):
 
 
     #write the output to file    
-    localoutput_file = output_file.replace('.html', '_' + str(distance) + '.html')
+    #convert meters to miles for the output file name
+    localoutput_file = output_file.replace('.html', '_' + str(round(distance * 0.000621371)) + '.html')
     fs = open(localoutput_file, 'w')
     fs.write(Page_1)
     fs.write(Page_2)
@@ -236,10 +237,11 @@ def run_genetic_algorithm(generations=5000, population_size=100):
         for rank, agent_genome in enumerate(sorted(population_fitness, key=population_fitness.get)[:10]):
             if (generation % 1000 == 0 or generation == generations - 1) and rank == 0:
                 current_best_genome = agent_genome
+                # Convert the value for "best" to miles for display
                 print("Generation %d best: %d | Unique genomes: %d" % (generation,
-                                                                       population_fitness[agent_genome],
+                                                                       round(population_fitness[agent_genome] * 0.000621371),
                                                                        len(population_fitness)))
-                print(agent_genome)                
+                # print(agent_genome)                
                 print("")
 
                 #if this is the first route found, or it is shorter than the best route we know, create a html output and display it
@@ -271,65 +273,66 @@ def run_genetic_algorithm(generations=5000, population_size=100):
 # if this file exists, read the data stored in it - if not then collect data by asking google
 print "Begin finding shortest route"
 file_path = waypoints_file
+waypoint_distances = {}
+waypoint_durations = {}
+all_waypoints_cached = set()
+
 if os.path.exists(file_path):
     print "Waypoints exist"
     #file exists used saved results
-    waypoint_distances = {}
-    waypoint_durations = {}
-    all_waypoints = set()
 
     waypoint_data = pd.read_csv(file_path, sep="\t")
 
     for i, row in waypoint_data.iterrows():
         waypoint_distances[frozenset([row.waypoint1, row.waypoint2])] = row.distance_m
         waypoint_durations[frozenset([row.waypoint1, row.waypoint2])] = row.duration_s
-        all_waypoints.update([row.waypoint1, row.waypoint2])
-
-else:
-    #file does not exist - compute results       
-    print "Collecting Waypoints"
-    waypoint_distances = {}
-    waypoint_durations = {}
+        all_waypoints_cached.update([row.waypoint1, row.waypoint2])
+	
+#else:
+#file does not exist - compute results       
+print "Collecting Waypoints"
 
 
-    gmaps = googlemaps.Client(GOOGLE_MAPS_API_KEY)
-    for (waypoint1, waypoint2) in combinations(all_waypoints, 2):
-        try:
-            route = gmaps.distance_matrix(origins=[waypoint1],
-                                          destinations=[waypoint2],
-                                          mode="driving", # Change to "walking" for walking directions,
-                                                          # "bicycling" for biking directions, etc.
-                                          language="English",
-                                          units="metric")
+gmaps = googlemaps.Client(GOOGLE_MAPS_API_KEY)
+for (waypoint1, waypoint2) in combinations(all_waypoints, 2):
+	try:
+		# Check if we already have the data calculated before checking gmaps
+		if frozenset([waypoint1, waypoint2]) not in waypoint_distances:
+			print("No current route between %s and %s." % (waypoint1, waypoint2))
+			route = gmaps.distance_matrix(origins=[waypoint1],
+										  destinations=[waypoint2],
+										  mode="driving", # Change to "walking" for walking directions,
+														  # "bicycling" for biking directions, etc.
+										  language="English",
+										  units="metric")
 
-            # "distance" is in meters
-            distance = route["rows"][0]["elements"][0]["distance"]["value"]
+			# "distance" is in meters
+			distance = route["rows"][0]["elements"][0]["distance"]["value"]
 
-            # "duration" is in seconds
-            duration = route["rows"][0]["elements"][0]["duration"]["value"]
+			# "duration" is in seconds
+			duration = route["rows"][0]["elements"][0]["duration"]["value"]
 
-            waypoint_distances[frozenset([waypoint1, waypoint2])] = distance
-            waypoint_durations[frozenset([waypoint1, waypoint2])] = duration
-    
-        except Exception as e:
-            print("Error with finding the route between %s and %s." % (waypoint1, waypoint2))
-    
-    print "Saving Waypoints"
-    with open(waypoints_file, "wb") as out_file:
-        out_file.write("\t".join(["waypoint1",
-                                  "waypoint2",
-                                  "distance_m",
-                                  "duration_s"]))
-    
-        for (waypoint1, waypoint2) in waypoint_distances.keys():
-            out_file.write("\n" +
-                           "\t".join([waypoint1,
-                                      waypoint2,
-                                      str(waypoint_distances[frozenset([waypoint1, waypoint2])]),
-                                      str(waypoint_durations[frozenset([waypoint1, waypoint2])])]))
+			waypoint_distances[frozenset([waypoint1, waypoint2])] = distance
+			waypoint_durations[frozenset([waypoint1, waypoint2])] = duration
+
+	except Exception as e:
+		print("Error with finding the route between %s and %s." % (waypoint1, waypoint2))
+
+print "Saving Waypoints"
+with open(waypoints_file, "wb") as out_file:
+	out_file.write("\t".join(["waypoint1",
+							  "waypoint2",
+							  "distance_m",
+							  "duration_s"]))
+
+	for (waypoint1, waypoint2) in waypoint_distances.keys():
+		out_file.write("\n" +
+					   "\t".join([waypoint1,
+								  waypoint2,
+								  str(waypoint_distances[frozenset([waypoint1, waypoint2])]),
+								  str(waypoint_durations[frozenset([waypoint1, waypoint2])])]))
 
 
-#optimal_route = run_genetic_algorithm(generations=100, population_size=100)
 print "Search for optimal route"
 optimal_route = run_genetic_algorithm(generations=thisRunGenerations, population_size=thisRunPopulation_size)
 
