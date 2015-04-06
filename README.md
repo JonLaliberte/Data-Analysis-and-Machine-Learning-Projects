@@ -16,9 +16,11 @@ For example, if you want to view the notebook in the `wheres-waldo-path-optimiza
 # My Changes
 My only changes are to the optimal-road-trip python script (and my first real use of python, so excuse any faux pas).
 
-I didn't really care so much about how well I did this, I just wanted to be able to test additional waypoints faster, so here we go...
+I didn't really care so much about how I did this, I just wanted to be able to test additional waypoints faster, so here we go...
 
 Changes:
-	* Use the tsv file as a cache, so you can now add a location to the waypoint set and it will only have to hit gmaps for n-1 calculations instead of n^2. If you're planning a roadtrip this saves you a ton of time when checking if a new location will add significantly to your trip. Previously if you added a new waypoint you'd lose all the already calculated paths.
-	* Changed files to be saved using miles in the file name instead of meters, because that makes more sense to me when planning a trip.
-	* Display miles(again, instead of meters) when printing at each milestone iteration of the genetic algorithm
+
+*	Use the tsv file as a cache, so you can now add a location to the waypoint set and it will only have to hit gmaps for n-1 calculations instead of n^2. If you're planning a roadtrip this saves you a ton of time when checking if a new location will add significantly to your trip. Previously if you added a new waypoint you'd lose all the already calculated paths.
+
+*	Changed files to be saved using miles in the file name instead of meters, because that makes more sense to me when planning a trip.
+*	Display miles(again, instead of meters) when printing at each milestone iteration of the genetic algorithm
